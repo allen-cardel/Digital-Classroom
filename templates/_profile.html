@@ -1,0 +1,28 @@
+<h1 class="page-title">Profile</h1>
+<div class="split">
+  <div class="panel">
+    <h3>Basic information</h3>
+    <p><b>User ID:</b> {{ profile.id }}</p>
+    <p><b>Full name:</b> {{ profile.fullname or "Not provided" }}</p>
+    <p><b>Username:</b> {{ profile.username }}</p>
+    <p><b>Email:</b> {{ profile.email or "Not provided" }}</p>
+    <p><b>Contact:</b> {{ profile.contact or "Not provided" }}</p>
+    <p><b>Role:</b> {{ profile.role }}</p>
+    <p><b>Section:</b> {{ profile.section or "Not assigned" }}</p>
+    <form method="post" enctype="multipart/form-data">
+      <div class="field"><label>Full name</label><input name="fullname" value="{{ profile.fullname or '' }}" required></div>
+      <div class="field"><label>Email address</label><input name="email" value="{{ profile.email or '' }}"></div>
+      <div class="field"><label>Contact number</label><input name="contact" value="{{ profile.contact or '' }}"></div>
+      <div class="field"><label>Choose photo</label><input type="file" name="photo" accept="image/*"></div>
+      <button class="btn btn-gold btn-xl" type="submit"><span>Save Changes</span></button>
+    </form>
+  </div>
+  <div class="panel" style="text-align:center">
+    {% if profile.photo_path %}
+      <img class="photo" src="{{ url_for('file_photo', user_id=profile.id) }}" alt="Profile photo">
+    {% else %}
+      <div class="photo" style="display:grid;place-items:center;color:#526b8b">NO PHOTO</div>
+    {% endif %}
+    <h3>{{ profile.fullname or "Name not set" }}</h3>
+  </div>
+</div>

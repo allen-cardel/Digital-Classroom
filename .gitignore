@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+profile_photos/
+uploaded_activities/
+uploaded_announcements/
+uploaded_modules/
+uploaded_submissions/

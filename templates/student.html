@@ -1,0 +1,219 @@
+{% extends "base_portal.html" %}
+{% set title = "Student Dashboard" %}
+{% set brand = "STUDENT PORTAL" %}
+{% block nav %}
+  <a class="nav-btn {% if page == 'dashboard' %}active{% endif %}" href="{{ url_for('student_dashboard') }}">Dashboard</a>
+  <a class="nav-btn {% if page == 'modules' %}active{% endif %}" href="{{ url_for('student_modules') }}">Modules</a>
+  <a class="nav-btn {% if page == 'activities' or page == 'submit' %}active{% endif %}" href="{{ url_for('student_activities') }}">Activities</a>
+  <a class="nav-btn {% if page == 'history' or page == 'versions' %}active{% endif %}" href="{{ url_for('student_history') }}">Submission History</a>
+  <a class="nav-btn {% if page == 'announcements' %}active{% endif %}" href="{{ url_for('student_announcements') }}">Announcements</a>
+  <a class="nav-btn {% if page == 'reviewer' %}active{% endif %}" href="{{ url_for('student_reviewer') }}">AI Reviewer</a>
+  <a class="nav-btn {% if page == 'profile' %}active{% endif %}" href="{{ url_for('student_profile') }}">Profile</a>
+{% endblock %}
+{% block content %}
+  {% if page == 'dashboard' %}
+    <h1 class="page-title">Student Dashboard</h1>
+    <p class="lede">Welcome, {{ current_user.fullname }}! Your section: {{ current_user.section }}</p>
+    <div class="grid-2">
+      <a class="dash-card c5" href="{{ url_for('student_modules') }}">
+        <div class="icon">📖</div>
+        <div><h3>Uploaded Module</h3><p>Access your learning materials and modules. {{ module_count }} posted.</p></div>
+        <span class="btn btn-navy btn-sm"><span>Open →</span></span>
+      </a>
+      <a class="dash-card c2" href="{{ url_for('student_activities') }}">
+        <div class="icon">📄</div>
+        <div>
+          <h3>Due Soon</h3>
+          {% if pending_count == 0 %}
+            <p>All activities have been turned in!</p>
+          {% else %}
+            <p>Not yet turned in: {{ pending_count }}</p>
+            {% for title, due in pending[:3] %}<p>• {{ title }} — Due: {{ due }}</p>{% endfor %}
+          {% endif %}
+        </div>
+        <span class="btn btn-navy btn-sm"><span>Open →</span></span>
+      </a>
+      <a class="dash-card c3" href="{{ url_for('student_reviewer') }}">
+        <div class="icon">🎓</div>
+        <div><h3>AI Generator Reviewer</h3><p>Generate practice questions and review what you've learned.</p></div>
+        <span class="btn btn-navy btn-sm"><span>Open →</span></span>
+      </a>
+      <a class="dash-card c6" href="{{ url_for('student_announcements') }}">
+        <div class="icon">📢</div>
+        <div><h3>Announcements</h3><p>View important updates from your teacher. {{ announcement_count }} posted.</p></div>
+        <span class="btn btn-navy btn-sm"><span>Open →</span></span>
+      </a>
+    </div>
+
+  {% elif page == 'modules' %}
+    <h1 class="page-title">Modules</h1>
+    {% include "_subject_picker.html" %}
+    {% for module in modules %}
+      <article class="item-card">
+        <h4>{{ module[1] }}</h4>
+        {% if module[2] %}<p>{{ module[2] }}</p>{% endif %}
+        {% if module[4] %}
+          <p>File: {{ module[3] }}</p>
+          <a class="btn btn-navy btn-md" href="{{ url_for('file_module', module_id=module[0]) }}"><span>Open File</span></a>
+        {% endif %}
+        {% if module[5] %}
+          <a class="btn btn-ghost btn-md" href="{{ module[5] }}" target="_blank"><span>Open Link</span></a>
+        {% endif %}
+        <p class="muted">Subject: {{ module[7] or "General / Not assigned" }} · Posted: {{ module[6] }}</p>
+      </article>
+    {% else %}
+      <p class="muted">No modules posted yet.</p>
+    {% endfor %}
+
+  {% elif page == 'activities' %}
+    <h1 class="page-title">Activities</h1>
+    {% include "_subject_picker.html" %}
+    <div class="split" style="margin-top:16px">
+      <div class="panel">
+        <h3>Due soon</h3>
+        {% for activity in due_soon %}
+          <article class="item-card">
+            <h4>{{ activity[1] }}</h4>
+            <p class="muted">Subject: {{ activity[6] or "General / Not assigned" }}</p>
+            <p>{{ activity[2] }}</p>
+            <p><b>Deadline:</b> {{ activity[3] or "No deadline" }}</p>
+            <div class="actions">
+              {% if activity[4] %}<a class="btn btn-ghost btn-sm" href="{{ url_for('file_activity', activity_id=activity[0]) }}"><span>Open Attachment</span></a>{% endif %}
+              {% if activity[5] %}<a class="btn btn-ghost btn-sm" href="{{ activity[5] }}" target="_blank"><span>Open Resource</span></a>{% endif %}
+              <a class="btn btn-gold btn-md" href="{{ url_for('student_submit', activity_id=activity[0]) }}"><span>Turn In</span></a>
+            </div>
+          </article>
+        {% else %}
+          <p class="muted">No activities here.</p>
+        {% endfor %}
+      </div>
+      <div class="panel">
+        <h3>Missing</h3>
+        {% for activity in missing %}
+          <article class="item-card">
+            <h4>{{ activity[1] }}</h4>
+            <p class="bad">Overdue: {{ activity[3] }}</p>
+            <a class="btn btn-gold btn-md" href="{{ url_for('student_submit', activity_id=activity[0]) }}"><span>Turn In</span></a>
+          </article>
+        {% else %}
+          <p class="muted">No activities here.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+  {% elif page == 'submit' %}
+    <a class="btn btn-ghost btn-md" href="{{ url_for('student_activities') }}"><span>← Back</span></a>
+    <h1 class="page-title">Turn In: {{ activity[1] }}</h1>
+    <p class="lede">Deadline: {{ activity[2] }}</p>
+    <form class="panel" method="post" enctype="multipart/form-data">
+      <div class="field"><label>Your written answer</label><textarea name="answer"></textarea></div>
+      <div class="field"><label>Attach file</label><input type="file" name="file"></div>
+      <p class="muted">You can submit a written answer, a file, or both.</p>
+      <button class="btn btn-gold btn-xl" type="submit"><span>Submit Activity</span></button>
+    </form>
+
+  {% elif page == 'history' %}
+    <h1 class="page-title">My Submission History</h1>
+    {% for record in records %}
+      <article class="item-card">
+        <h4>{{ record.activity_title }}</h4>
+        <p>Latest submission: {{ record.submitted_at }}</p>
+        <p>{{ record.answer_text or "No written answer attached." }}</p>
+        <div class="actions">
+          {% if record.file_path %}
+            <a class="btn btn-navy btn-sm" href="{{ url_for('file_submission', submission_id=record.submission_id) }}"><span>Open Submitted File</span></a>
+          {% endif %}
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('student_previous_versions', activity_id=record.activity_id) }}"><span>View Previous Versions</span></a>
+        </div>
+      </article>
+    {% else %}
+      <p class="muted">You have not submitted any activities yet.</p>
+    {% endfor %}
+
+  {% elif page == 'versions' %}
+    <a class="btn btn-ghost btn-md" href="{{ url_for('student_history') }}"><span>← Back to Submission History</span></a>
+    <h1 class="page-title">Previous Versions - {{ activity_title }}</h1>
+    {% for history_id, answer, path in versions %}
+      <article class="item-card">
+        <h4>Previous Version {{ loop.index }}</h4>
+        <p>{{ answer or "No written answer" }}</p>
+        {% if path %}<a class="btn btn-navy btn-sm" href="{{ url_for('file_history', history_id=history_id) }}"><span>Open Previous File</span></a>{% endif %}
+      </article>
+    {% else %}
+      <p class="muted">No previous versions saved for this submission yet.</p>
+    {% endfor %}
+
+  {% elif page == 'announcements' %}
+    <h1 class="page-title">Announcements</h1>
+    {% for item in announcements %}
+      <article class="item-card">
+        <h4>{{ item[1] }}</h4>
+        <p class="muted">Subject: {{ item[6] or "General / Not assigned" }}</p>
+        <p>{{ item[2] }}</p>
+        <p>Section: {{ item[4] or "All Sections" }}</p>
+        {% if item[3] %}<a class="btn btn-navy btn-sm" href="{{ url_for('file_announcement', item_id=item[0]) }}"><span>Open Attachment</span></a>{% endif %}
+        <p class="muted">Posted: {{ item[5] }}</p>
+      </article>
+    {% else %}
+      <p class="muted">No announcements posted yet.</p>
+    {% endfor %}
+
+    <h2>Today's Attendance</h2>
+    {% for item in attendance_items %}
+      <article class="item-card">
+        <h4>📅 {{ item.title }}</h4>
+        <p>Section: {{ item.section or "All Sections" }}</p>
+        <p><b>Deadline:</b> {{ item.deadline }}</p>
+        {% if item.marked_at %}
+          <p class="ok">Present — recorded at {{ item.marked_at }}</p>
+        {% elif not item.open %}
+          <p class="bad">Attendance is closed. Deadline has passed.</p>
+        {% else %}
+          <form method="post" action="{{ url_for('student_mark_attendance', attendance_id=item.id) }}">
+            <button class="btn btn-ok btn-lg" type="submit"><span>Present</span></button>
+          </form>
+        {% endif %}
+      </article>
+    {% else %}
+      <p class="muted">No attendance sessions today.</p>
+    {% endfor %}
+
+  {% elif page == 'reviewer' %}
+    <h1 class="page-title">AI Generator Reviewer</h1>
+    <form class="panel" method="post">
+      <div class="field">
+        <label>Select module</label>
+        <select name="module_id">
+          {% for module in modules %}
+            <option value="{{ module[0] }}" {% if selected_id == module[0] %}selected{% endif %}>{{ module[0] }} - {{ module[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-gold btn-xl" type="submit"><span>Generate Reviewer</span></button>
+    </form>
+    {% if not modules %}<p class="muted">No uploaded modules are available.</p>{% endif %}
+    {% if summary %}
+      <div class="panel" style="margin-top:16px">
+        <h3>Summary</h3>
+        <p>{{ summary }}</p>
+        <h3>Key points</h3>
+        <ul>{% for point in key_points %}<li>{{ point }}</li>{% endfor %}</ul>
+      </div>
+      <script id="quiz-data" type="application/json">{{ questions|tojson }}</script>
+      <div class="panel" style="margin-top:16px" id="quiz-app">
+        <h3 id="quiz-question">Generate a reviewer to begin.</h3>
+        <div id="quiz-options"></div>
+        <p id="quiz-feedback"></p>
+        <p id="quiz-score"></p>
+        <div class="actions">
+          <button class="btn btn-navy btn-md" type="button" id="check-answer"><span>Check Answer</span></button>
+          <button class="btn btn-ok btn-md" type="button" id="next-question"><span>Next Question</span></button>
+          <button class="btn btn-gold btn-md" type="button" id="practice-missed"><span>Practice Missed Questions</span></button>
+        </div>
+      </div>
+    {% endif %}
+
+  {% elif page == 'profile' %}
+    {% include "_profile.html" %}
+  {% endif %}
+{% endblock %}

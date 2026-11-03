@@ -1,0 +1,140 @@
+{% extends "base_portal.html" %}
+{% set title = "Administrator Dashboard" %}
+{% set brand = "ADMIN PORTAL" %}
+{% block nav %}
+  <a class="nav-btn active" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+{% endblock %}
+{% block content %}
+  <h1 class="page-title">Administrator Dashboard</h1>
+  <p class="lede">Manage subjects, teacher assignments, irregular enrollments, and registered accounts.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="subjects" onclick="showTab('subjects')">Subjects & Assignments</button>
+    <button class="tab" data-tab="enrollments" onclick="showTab('enrollments')">Student Enrollments</button>
+    <button class="tab" data-tab="users" onclick="showTab('users')">User Accounts</button>
+  </div>
+
+  <section data-tab-panel="subjects">
+    <div class="panel">
+      <h3>Create or assign a subject</h3>
+      <form method="post" action="{{ url_for('admin_save_subject') }}" class="grid-2">
+        <div class="field">
+          <label>Subject name</label>
+          <input name="subject_name" required>
+        </div>
+        <div class="field">
+          <label>Class / Section</label>
+          <select name="section">
+            {% for section in sections %}<option>{{ section }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Assigned teacher</label>
+          <select name="teacher_id" required>
+            {% for teacher in teachers %}
+              <option value="{{ teacher.id }}">{{ teacher.id }} - {{ teacher.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field" style="align-self:end">
+          <button class="btn btn-gold btn-lg" type="submit"><span>Save / Assign Subject</span></button>
+        </div>
+      </form>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>Current subjects</h3>
+      <table>
+        <tr><th>ID</th><th>Subject</th><th>Section</th><th>Teacher</th><th></th></tr>
+        {% for subject in subjects %}
+          <tr>
+            <td>{{ subject.id }}</td>
+            <td>{{ subject.subject_name }}</td>
+            <td>{{ subject.section }}</td>
+            <td>{{ subject.teacher }}</td>
+            <td>
+              <form method="post" action="{{ url_for('admin_delete_subject', subject_id=subject.id) }}" onsubmit="return confirm('Delete this subject?')">
+                <button class="btn btn-danger btn-sm" type="submit"><span>Delete</span></button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">No subjects yet.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </section>
+
+  <section class="hidden" data-tab-panel="enrollments">
+    <div class="panel">
+      <h3>Student subject enrollment</h3>
+      <p class="muted">Regular students follow their section. For irregular students, check only the subjects they currently take.</p>
+      <form method="post" action="{{ url_for('admin_save_enrollment') }}">
+        <div class="grid-2">
+          <div class="field">
+            <label>Student</label>
+            <select name="student_id" id="student-box">
+              {% for student in students %}
+                <option value="{{ student.id }}" data-section="{{ student.section }}">{{ student.id }} - {{ student.name }} ({{ student.section }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Enrollment type</label>
+            <select name="enrollment_type" id="enrollment-type">
+              <option>Regular</option>
+              <option>Irregular</option>
+            </select>
+          </div>
+        </div>
+        <p><b>Subjects for this student</b></p>
+        {% for subject in all_subjects %}
+          <label class="quiz-option">
+            <input type="checkbox" name="subject_ids" value="{{ subject.id }}">
+            {{ subject.subject_name }} ({{ subject.section }})
+          </label>
+        {% else %}
+          <p class="muted">No subjects have been created yet.</p>
+        {% endfor %}
+        <button class="btn btn-gold btn-lg" type="submit"><span>Save Enrollment</span></button>
+      </form>
+    </div>
+  </section>
+
+  <section class="hidden" data-tab-panel="users">
+    <div class="panel">
+      <h3>Registered user accounts</h3>
+      <p class="muted">This page is a read-only overview. Teacher and student accounts are created through registration. Administrator accounts are created manually.</p>
+      <table>
+        <tr><th>ID</th><th>Full name</th><th>Username / Email</th><th>Role</th><th>Section</th></tr>
+        {% for account in accounts %}
+          <tr>
+            <td>{{ account.id }}</td>
+            <td>{{ account.fullname or "Not provided" }}</td>
+            <td>{{ account.username }}</td>
+            <td>{{ account.role }}</td>
+            <td>{{ account.section }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </section>
+  <script>
+    const enrollmentTypes = {{ enrollment_types|tojson }};
+    const assignments = {{ assignments|tojson }};
+    const studentBox = document.getElementById("student-box");
+    const typeBox = document.getElementById("enrollment-type");
+    function syncEnrollment() {
+      if (!studentBox) return;
+      const studentId = studentBox.value;
+      typeBox.value = enrollmentTypes[studentId] || "Regular";
+      document.querySelectorAll("input[name='subject_ids']").forEach((box) => {
+        const assigned = assignments[studentId] || [];
+        box.checked = assigned.map(String).includes(box.value);
+      });
+    }
+    if (studentBox) {
+      studentBox.addEventListener("change", syncEnrollment);
+      syncEnrollment();
+    }
+  </script>
+{% endblock %}

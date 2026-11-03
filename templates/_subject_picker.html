@@ -1,0 +1,8 @@
+<form class="chip-row" method="post" action="{{ url_for('set_subject') }}">
+  <input type="hidden" name="next" value="{{ request.path }}">
+  {% for subject in subjects %}
+    <button class="chip {% if current_subject == subject %}active{% endif %}" name="subject" value="{{ subject }}">
+      {% if current_subject == subject %}✓ {% endif %}{{ subject }}
+    </button>
+  {% endfor %}
+</form>

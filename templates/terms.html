@@ -1,0 +1,17 @@
+{% extends "base_auth.html" %}
+{% set title = "Terms and Conditions" %}
+{% block body %}
+<div class="auth-panel" style="min-height:100vh">
+  <div class="card auth-card" style="width:min(720px,100%)">
+    <h2>Terms and Conditions & Privacy</h2>
+    <p class="sub">Interactive Digital Resources Portal</p>
+    <p><b>1. Account information</b><br>Your email address is used as your username. Students also provide their full name and select their section during registration.</p>
+    <p><b>2. Use of information</b><br>Account details identify users and provide the matching teacher, student, or administrator tools.</p>
+    <p><b>3. Privacy and access</b><br>Do not share your password. Teachers and authorized administrators should only access student information for legitimate classroom purposes.</p>
+    <p><b>4. Uploaded materials</b><br>Upload only school-related materials you are allowed to share.</p>
+    <p><b>5. Data Privacy and Confidentiality</b><br>Personal information shared through this portal is kept confidential except when required by law.</p>
+    <p><b>6. Questions</b><br>Contact your teacher or the person managing this school project.</p>
+    <a class="btn btn-navy btn-xl" href="{{ url_for('login') }}"><span>Close</span></a>
+  </div>
+</div>
+{% endblock %}
