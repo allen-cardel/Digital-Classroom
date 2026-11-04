@@ -3,3 +3,4 @@ mysql-connector-python
 pillow
 pypdf
 werkzeug
+gunicorn
