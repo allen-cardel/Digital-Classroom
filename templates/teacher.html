@@ -3,8 +3,8 @@
 {% set brand = "TEACHER PORTAL" %}
 {% block nav %}
   <a class="nav-btn {% if page == 'dashboard' %}active{% endif %}" href="{{ url_for('teacher_dashboard') }}">Dashboard</a>
-  <a class="nav-btn {% if page == 'modules' %}active{% endif %}" href="{{ url_for('teacher_modules') }}">Modules</a>
-  <a class="nav-btn {% if page == 'activities' %}active{% endif %}" href="{{ url_for('teacher_activities') }}">Activities</a>
+  <a class="nav-btn {% if page == 'modules' or page == 'edit_module' %}active{% endif %}" href="{{ url_for('teacher_modules') }}">Modules</a>
+  <a class="nav-btn {% if page == 'activities' or page == 'edit_activity' %}active{% endif %}" href="{{ url_for('teacher_activities') }}">Activities</a>
   <a class="nav-btn {% if page == 'attendance_records' or page == 'create_attendance' %}active{% endif %}" href="{{ url_for('teacher_attendance_records') }}">Attendance Records</a>
   <a class="nav-btn {% if page == 'students_work' or page == 'history' %}active{% endif %}" href="{{ url_for('teacher_students_work') }}">Students' Work</a>
   <a class="nav-btn {% if page == 'profile' %}active{% endif %}" href="{{ url_for('teacher_profile') }}">Profile</a>
@@ -12,7 +12,7 @@
 {% block content %}
   {% if page == 'dashboard' %}
     <h1 class="page-title">Teacher Dashboard</h1>
-    <p class="lede">Welcome back. Command the classroom: post, assign, record, and review.</p>
+    <p class="lede">Welcome back. Post, assign, record, and review from one place.</p>
     <div class="grid-4">
       <div class="stat"><span class="muted">Modules</span><b>{{ stats.modules }}</b></div>
       <div class="stat"><span class="muted">Activities</span><b>{{ stats.activities }}</b></div>
@@ -20,11 +20,62 @@
       <div class="stat"><span class="muted">Announcements</span><b>{{ stats.announcements }}</b></div>
     </div>
     <div class="grid-2" style="margin-top:18px">
-      <a class="dash-card c1" href="{{ url_for('teacher_announcement') }}"><div class="icon">📢</div><div><h3>Announcement</h3><p>Post important updates and reminders.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
-      <a class="dash-card c2" href="{{ url_for('teacher_students_work') }}"><div class="icon">📄</div><div><h3>Students' Work</h3><p>View and track student submissions.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
-      <a class="dash-card c3" href="{{ url_for('teacher_attendance') }}"><div class="icon">📅</div><div><h3>Create Attendance</h3><p>Open today's attendance window.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
-      <a class="dash-card c4" href="{{ url_for('teacher_modules') }}"><div class="icon">📝</div><div><h3>Module and Activity</h3><p>Post learning materials or assign work.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
+      <a class="dash-card" href="{{ url_for('teacher_announcement') }}"><div class="icon">📢</div><div><h3>Announcement</h3><p>Post important updates and reminders.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
+      <a class="dash-card" href="{{ url_for('teacher_students_work') }}"><div class="icon">📄</div><div><h3>Students' Work</h3><p>View submissions and give grades.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
+      <a class="dash-card" href="{{ url_for('teacher_attendance') }}"><div class="icon">📅</div><div><h3>Attendance</h3><p>Open today's attendance window.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
+      <a class="dash-card" href="{{ url_for('teacher_upload_choose') }}"><div class="icon">📝</div><div><h3>Module and Activity</h3><p>Choose what to upload for this class.</p></div><span class="btn btn-navy btn-sm"><span>Open →</span></span></a>
     </div>
+
+  {% elif page == 'upload_choose' %}
+    <h1 class="page-title">Module and Activity</h1>
+    <p class="lede">Choose what you want to upload. Posted items are kept in Modules and Activities on the sidebar.</p>
+    <div class="grid-2">
+      <a class="dash-card" href="{{ url_for('teacher_upload_module') }}"><div class="icon">📚</div><div><h3>Upload Module</h3><p>Post a learning file or link.</p></div><span class="btn btn-navy btn-sm"><span>Upload →</span></span></a>
+      <a class="dash-card" href="{{ url_for('teacher_upload_activity') }}"><div class="icon">✏️</div><div><h3>Assign Activity</h3><p>Create work, set a due date, and choose the total score.</p></div><span class="btn btn-navy btn-sm"><span>Assign →</span></span></a>
+    </div>
+
+  {% elif page == 'upload_module' %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher_upload_choose') }}"><span>← Back</span></a>
+    <h1 class="page-title">Upload Module</h1>
+    <form class="panel" method="post" enctype="multipart/form-data">
+      <div class="field"><label>Module title</label><input name="title" required></div>
+      <div class="field"><label>Description</label><textarea name="description" required></textarea></div>
+      <div class="field"><label>Attach a file</label><input type="file" name="file"></div>
+      <div class="field"><label>Module link (optional if a file is attached)</label><input name="url" placeholder="https://"></div>
+      <div class="field"><label>Upload to section</label>
+        <select name="section">{% for section in sections %}<option>{{ section }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Subject</label>
+        <select name="subject">
+          {% for subject in subject_options %}<option>{{ subject }}</option>
+          {% else %}<option>No assigned subjects</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-gold btn-xl" type="submit"><span>Post Module</span></button>
+    </form>
+
+  {% elif page == 'upload_activity' %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher_upload_choose') }}"><span>← Back</span></a>
+    <h1 class="page-title">Assign Activity</h1>
+    <form class="panel" method="post" enctype="multipart/form-data">
+      <div class="field"><label>Activity title</label><input name="title" required></div>
+      <div class="field"><label>Instructions</label><textarea name="instructions" required></textarea></div>
+      <div class="field"><label>Due date</label><input type="date" name="due_date" required></div>
+      <div class="field"><label>Due time (HH:MM)</label><input name="due_time" value="23:59" required></div>
+      <div class="field"><label>Total score the student can receive</label><input type="number" name="max_score" min="1" value="100" required></div>
+      <div class="field"><label>Attach file</label><input type="file" name="attachment"></div>
+      <div class="field"><label>Resource link (optional)</label><input name="resource_url" placeholder="https://"></div>
+      <div class="field"><label>Assign to section</label>
+        <select name="section">{% for section in sections %}<option>{{ section }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Subject</label>
+        <select name="subject">
+          {% for subject in subject_options %}<option>{{ subject }}</option>
+          {% else %}<option>No assigned subjects</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-gold btn-xl" type="submit"><span>Save Activity</span></button>
+    </form>
 
   {% elif page == 'announcement' %}
     <h1 class="page-title">Create Announcement</h1>
@@ -49,100 +100,111 @@
         <select name="section">{% for section in sections %}<option>{{ section }}</option>{% endfor %}</select>
       </div>
       <div class="field"><label>Deadline today (HH:MM)</label><input name="deadline" value="23:59" required></div>
-      <p class="muted">Students can mark Present only until this time today.</p>
+      <p class="muted">Students can notify you that they are present until this time. Only you can mark them Present.</p>
       <button class="btn btn-gold btn-xl" type="submit"><span>Create Attendance</span></button>
     </form>
 
   {% elif page == 'attendance_records' %}
-    <div class="toolbar">
-      <div>
-        <h1 class="page-title">Attendance Records</h1>
-        <p class="lede">See who has already marked Present.</p>
-      </div>
-      <a class="btn btn-gold btn-lg" href="{{ url_for('teacher_attendance') }}"><span>Create Attendance</span></a>
-    </div>
+    <h1 class="page-title">Attendance Records</h1>
+    <p class="lede">Confirm students who notified you, or mark Present yourself.</p>
     {% for attendance in records %}
       <article class="item-card">
         <h4>📅 {{ attendance.title }}</h4>
         <p class="muted">Section: {{ attendance.section }} | Date: {{ attendance.attendance_date }}</p>
         <p>Deadline: {{ attendance.deadline }}</p>
-        <p class="ok">Answered: {{ attendance.students|selectattr('status', 'equalto', 'Present')|list|length }} student(s)</p>
-        {% for student in attendance.students if student.status == 'Present' %}
-          <p>• {{ student.fullname or student.student_name }} ({{ student.student_name }}) — Present at {{ student.marked_at }}</p>
+        <p class="ok">Present: {{ attendance.students|selectattr('status', 'equalto', 'Present')|list|length }} student(s)</p>
+        {% for student in attendance.students %}
+          <div class="item-card">
+            <p><b>{{ student.fullname or student.student_name }}</b> ({{ student.student_name }})</p>
+            {% if student.status == 'Present' %}
+              <p class="ok">Present{% if student.marked_at %} at {{ student.marked_at }}{% endif %}</p>
+            {% elif student.status == 'Notified' %}
+              <p>Notified teacher{% if student.notified_at %} at {{ student.notified_at }}{% endif %}. Waiting for confirmation.</p>
+              <form method="post" action="{{ url_for('teacher_mark_present', attendance_id=attendance.id, student_id=student.student_id) }}">
+                <button class="btn btn-ok btn-sm" type="submit"><span>Mark Present</span></button>
+              </form>
+            {% else %}
+              <p class="muted">No notification yet.</p>
+              <form method="post" action="{{ url_for('teacher_mark_present', attendance_id=attendance.id, student_id=student.student_id) }}">
+                <button class="btn btn-navy btn-sm" type="submit"><span>Mark Present</span></button>
+              </form>
+            {% endif %}
+          </div>
         {% else %}
-          <p class="bad">No student has answered this attendance yet.</p>
+          <p class="bad">No students found for this section.</p>
         {% endfor %}
       </article>
     {% else %}
-      <p class="muted">No attendance records yet. Create an attendance first.</p>
+      <p class="muted">No attendance records yet. Create an attendance from the dashboard.</p>
     {% endfor %}
 
   {% elif page == 'modules' %}
-    <div class="toolbar">
-      <h1 class="page-title">Modules</h1>
-    </div>
+    <h1 class="page-title">Modules</h1>
+    <p class="lede">Posted modules. Use the dashboard card to upload a new one.</p>
     {% include "_subject_picker.html" %}
-    <div class="split" style="margin-top:16px">
-      <div class="panel">
-        <h3>Posted modules</h3>
-        {% for module in modules %}
-          <article class="item-card">
-            <p class="muted">Subject: {{ module[8] or "General / Not assigned" }}</p>
-            <h4>{{ module[1] }}</h4>
-            {% if module[2] %}<p>{{ module[2] }}</p>{% endif %}
-            <p>Section: {{ module[7] or "All Sections" }}</p>
-            {% if module[3] %}<p>File: {{ module[3] }}</p>{% endif %}
-            <div class="actions">
-              {% if module[4] %}<a class="btn btn-navy btn-sm" href="{{ url_for('file_module', module_id=module[0]) }}"><span>Open File</span></a>{% endif %}
-              {% if module[5] %}<a class="btn btn-ghost btn-sm" href="{{ module[5] }}" target="_blank"><span>Open Link</span></a>{% endif %}
-              <form method="post" action="{{ url_for('teacher_delete_module', module_id=module[0]) }}" onsubmit="return confirm('Delete this module?')">
-                <button class="btn btn-danger btn-sm"><span>Delete</span></button>
-              </form>
-            </div>
-            {% if module[6] %}<p class="muted">Posted: {{ module[6] }}</p>{% endif %}
-          </article>
-        {% else %}
-          <p class="muted">No modules posted yet.</p>
-        {% endfor %}
+    {% for module in modules %}
+      <article class="item-card">
+        <p class="muted">Subject: {{ module.subject or "General / Not assigned" }}</p>
+        <h4>{{ module.title }}</h4>
+        {% if module.description %}<p>{{ module.description }}</p>{% endif %}
+        <p>Section: {{ module.section or "All Sections" }}</p>
+        {% if module.filename %}<p>File: {{ module.filename }}</p>{% endif %}
+        <div class="actions">
+          {% if module.filepath %}<a class="btn btn-navy btn-sm" href="{{ url_for('file_module', module_id=module.id) }}"><span>Open File</span></a>{% endif %}
+          {% if module.url %}<a class="btn btn-ghost btn-sm" href="{{ module.url }}" target="_blank"><span>Open Link</span></a>{% endif %}
+          <a class="btn btn-gold btn-sm" href="{{ url_for('teacher_edit_module', module_id=module.id) }}"><span>Edit</span></a>
+          <form method="post" action="{{ url_for('teacher_delete_module', module_id=module.id) }}" onsubmit="return confirm('Delete this module?')">
+            <button class="btn btn-danger btn-sm"><span>Delete</span></button>
+          </form>
+        </div>
+        {% if module.uploaded_at %}<p class="muted">Posted: {{ module.uploaded_at }}</p>{% endif %}
+      </article>
+    {% else %}
+      <p class="muted">No modules posted yet.</p>
+    {% endfor %}
+
+  {% elif page == 'edit_module' %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher_modules') }}"><span>← Back</span></a>
+    <h1 class="page-title">Edit Module</h1>
+    <form class="panel" method="post" enctype="multipart/form-data">
+      <div class="field"><label>Module title</label><input name="title" value="{{ module.title }}" required></div>
+      <div class="field"><label>Description</label><textarea name="description" required>{{ module.description or '' }}</textarea></div>
+      <div class="field"><label>Replace file (optional)</label><input type="file" name="file"></div>
+      <div class="field"><label>Module link</label><input name="url" value="{{ module.url or '' }}" placeholder="https://"></div>
+      <div class="field"><label>Upload to section</label>
+        <select name="section">
+          {% for section in sections %}<option {% if module.section == section %}selected{% endif %}>{{ section }}</option>{% endfor %}
+        </select>
       </div>
-      <form class="panel" method="post" enctype="multipart/form-data">
-        <h3>Create module</h3>
-        <div class="field"><label>Module title</label><input name="title" required></div>
-        <div class="field"><label>Description</label><textarea name="description" required></textarea></div>
-        <div class="field"><label>Attach a file</label><input type="file" name="file"></div>
-        <div class="field"><label>Module link (optional if a file is attached)</label><input name="url" placeholder="https://"></div>
-        <div class="field"><label>Upload to section</label>
-          <select name="section">{% for section in sections %}<option>{{ section }}</option>{% endfor %}</select>
-        </div>
-        <div class="field"><label>Subject</label>
-          <select name="subject">
-            {% for subject in subject_options %}<option>{{ subject }}</option>
-            {% else %}<option>No assigned subjects</option>{% endfor %}
-          </select>
-        </div>
-        <button class="btn btn-gold btn-xl" type="submit"><span>Post Module</span></button>
-      </form>
-    </div>
+      <div class="field"><label>Subject</label>
+        <select name="subject">
+          {% for subject in subject_options %}<option {% if module.subject == subject %}selected{% endif %}>{{ subject }}</option>
+          {% else %}<option>No assigned subjects</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-gold btn-xl" type="submit"><span>Save Changes</span></button>
+    </form>
 
   {% elif page == 'activities' %}
-    <div class="toolbar">
-      <h1 class="page-title">Activities</h1>
-    </div>
+    <h1 class="page-title">Activities</h1>
+    <p class="lede">Posted activities. Use the dashboard card to assign a new one.</p>
     {% include "_subject_picker.html" %}
     <div class="split" style="margin-top:16px">
       <div class="panel">
         <h3>Posted activities</h3>
         {% for activity in upcoming %}
           <article class="item-card">
-            <h4>{{ activity[1] }}</h4>
-            <p>Section: {{ activity[6] or "All Sections" }}</p>
-            <p>Subject: {{ activity[7] or "General / Not assigned" }}</p>
-            <p>{{ activity[2] }}</p>
-            <p>Deadline: {{ activity[3] or "No deadline" }}</p>
+            <h4>{{ activity.title }}</h4>
+            <p>Section: {{ activity.section or "All Sections" }}</p>
+            <p>Subject: {{ activity.subject or "General / Not assigned" }}</p>
+            <p>{{ activity.description }}</p>
+            <p>Deadline: {{ activity.due_date or "No deadline" }}</p>
+            <p>Total score: {{ activity.max_score or 100 }}</p>
             <div class="actions">
-              {% if activity[4] %}<a class="btn btn-navy btn-sm" href="{{ url_for('file_activity', activity_id=activity[0]) }}"><span>Open Attachment</span></a>{% endif %}
-              {% if activity[5] %}<a class="btn btn-ghost btn-sm" href="{{ activity[5] }}" target="_blank"><span>Open Resource</span></a>{% endif %}
-              <form method="post" action="{{ url_for('teacher_delete_activity', activity_id=activity[0]) }}" onsubmit="return confirm('Delete this activity?')">
+              {% if activity.attachment_path %}<a class="btn btn-navy btn-sm" href="{{ url_for('file_activity', activity_id=activity.id) }}"><span>Open Attachment</span></a>{% endif %}
+              {% if activity.resource_url %}<a class="btn btn-ghost btn-sm" href="{{ activity.resource_url }}" target="_blank"><span>Open Resource</span></a>{% endif %}
+              <a class="btn btn-gold btn-sm" href="{{ url_for('teacher_edit_activity', activity_id=activity.id) }}"><span>Edit</span></a>
+              <form method="post" action="{{ url_for('teacher_delete_activity', activity_id=activity.id) }}" onsubmit="return confirm('Delete this activity?')">
                 <button class="btn btn-danger btn-sm"><span>Delete</span></button>
               </form>
             </div>
@@ -151,42 +213,50 @@
           <p class="muted">No upcoming activities.</p>
         {% endfor %}
       </div>
-      <div>
-        <div class="panel">
-          <h3>Outdated activities</h3>
-          {% for activity in overdue %}
-            <article class="item-card">
-              <h4>{{ activity[1] }}</h4>
-              <p class="bad">Deadline: {{ activity[3] }}</p>
-              <form method="post" action="{{ url_for('teacher_delete_activity', activity_id=activity[0]) }}">
+      <div class="panel">
+        <h3>Outdated activities</h3>
+        {% for activity in overdue %}
+          <article class="item-card">
+            <h4>{{ activity.title }}</h4>
+            <p class="bad">Deadline: {{ activity.due_date }}</p>
+            <p>Total score: {{ activity.max_score or 100 }}</p>
+            <div class="actions">
+              <a class="btn btn-gold btn-sm" href="{{ url_for('teacher_edit_activity', activity_id=activity.id) }}"><span>Edit</span></a>
+              <form method="post" action="{{ url_for('teacher_delete_activity', activity_id=activity.id) }}">
                 <button class="btn btn-danger btn-sm"><span>Delete</span></button>
               </form>
-            </article>
-          {% else %}
-            <p class="muted">No past-deadline activities.</p>
-          {% endfor %}
-        </div>
-        <form class="panel" style="margin-top:16px" method="post" enctype="multipart/form-data">
-          <h3>Assign activity</h3>
-          <div class="field"><label>Activity title</label><input name="title" required></div>
-          <div class="field"><label>Instructions</label><textarea name="instructions" required></textarea></div>
-          <div class="field"><label>Due date</label><input type="date" name="due_date" required></div>
-          <div class="field"><label>Due time (HH:MM)</label><input name="due_time" value="23:59" required></div>
-          <div class="field"><label>Attach file</label><input type="file" name="attachment"></div>
-          <div class="field"><label>Resource link (optional)</label><input name="resource_url" placeholder="https://"></div>
-          <div class="field"><label>Assign to section</label>
-            <select name="section">{% for section in sections %}<option>{{ section }}</option>{% endfor %}</select>
-          </div>
-          <div class="field"><label>Subject</label>
-            <select name="subject">
-              {% for subject in subject_options %}<option>{{ subject }}</option>
-              {% else %}<option>No assigned subjects</option>{% endfor %}
-            </select>
-          </div>
-          <button class="btn btn-gold btn-xl" type="submit"><span>Save Activity</span></button>
-        </form>
+            </div>
+          </article>
+        {% else %}
+          <p class="muted">No past-deadline activities.</p>
+        {% endfor %}
       </div>
     </div>
+
+  {% elif page == 'edit_activity' %}
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher_activities') }}"><span>← Back</span></a>
+    <h1 class="page-title">Edit Activity</h1>
+    <form class="panel" method="post" enctype="multipart/form-data">
+      <div class="field"><label>Activity title</label><input name="title" value="{{ activity.title }}" required></div>
+      <div class="field"><label>Instructions</label><textarea name="instructions" required>{{ activity.description or '' }}</textarea></div>
+      <div class="field"><label>Due date</label><input type="date" name="due_date" value="{{ due_date }}" required></div>
+      <div class="field"><label>Due time (HH:MM)</label><input name="due_time" value="{{ due_time }}" required></div>
+      <div class="field"><label>Total score the student can receive</label><input type="number" name="max_score" min="1" value="{{ activity.max_score or 100 }}" required></div>
+      <div class="field"><label>Replace file (optional)</label><input type="file" name="attachment"></div>
+      <div class="field"><label>Resource link (optional)</label><input name="resource_url" value="{{ activity.resource_url or '' }}" placeholder="https://"></div>
+      <div class="field"><label>Assign to section</label>
+        <select name="section">
+          {% for section in sections %}<option {% if activity.section == section %}selected{% endif %}>{{ section }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Subject</label>
+        <select name="subject">
+          {% for subject in subject_options %}<option {% if activity.subject == subject %}selected{% endif %}>{{ subject }}</option>
+          {% else %}<option>No assigned subjects</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-gold btn-xl" type="submit"><span>Save Changes</span></button>
+    </form>
 
   {% elif page == 'students_work' %}
     <h1 class="page-title">Students' Work</h1>
@@ -195,16 +265,26 @@
       <article class="item-card">
         <h4>Activity: {{ record.activity_title }}</h4>
         <p>Student: {{ record.fullname or record.student_name }} ({{ record.section or "No Section" }})</p>
+        <p>Total score: {{ record.max_score or 100 }}</p>
         {% if record.submission_id %}
           <p class="ok">Status: Submitted</p>
           <p>Submitted at: {{ record.submitted_at }}</p>
           <p>Answer: {{ record.answer_text or "No written answer" }}</p>
-          <div class="actions">
+          <p>
+            {% if record.grade is not none %}
+              Grade: <b>{{ record.grade }}</b> / {{ record.max_score or 100 }}
+            {% else %}
+              Grade: Not graded yet
+            {% endif %}
+          </p>
+          <form method="post" action="{{ url_for('teacher_save_grade', submission_id=record.submission_id) }}" class="actions">
+            <input type="number" name="grade" min="0" max="{{ record.max_score or 100 }}" step="0.01" value="{{ record.grade if record.grade is not none else '' }}" placeholder="Grade" required style="max-width:140px">
+            <button class="btn btn-gold btn-sm" type="submit"><span>Save Grade</span></button>
             {% if record.file_path %}
               <a class="btn btn-navy btn-sm" href="{{ url_for('file_submission', submission_id=record.submission_id) }}"><span>Open Submitted File</span></a>
             {% endif %}
             <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher_submission_history', activity_id=record.activity_id, student_id=record.student_id) }}"><span>View History</span></a>
-          </div>
+          </form>
         {% else %}
           <p class="bad">Status: Not Submitted</p>
         {% endif %}
@@ -215,7 +295,7 @@
     {% endfor %}
 
   {% elif page == 'history' %}
-    <a class="btn btn-ghost btn-md" href="{{ url_for('teacher_students_work') }}"><span>← Back</span></a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher_students_work') }}"><span>← Back</span></a>
     <h1 class="page-title">Submission History</h1>
     <p class="lede">{{ activity_title }}</p>
     {% for history_id, answer, path in history %}

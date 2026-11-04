@@ -9,6 +9,9 @@
     <p><b>Contact:</b> {{ profile.contact or "Not provided" }}</p>
     <p><b>Role:</b> {{ profile.role }}</p>
     <p><b>Section:</b> {{ profile.section or "Not assigned" }}</p>
+    {% if profile.role == 'Student' %}
+      <p><b>Status:</b> {{ enrollment_status or "Regular" }}</p>
+    {% endif %}
     <form method="post" enctype="multipart/form-data">
       <div class="field"><label>Full name</label><input name="fullname" value="{{ profile.fullname or '' }}" required></div>
       <div class="field"><label>Email address</label><input name="email" value="{{ profile.email or '' }}"></div>

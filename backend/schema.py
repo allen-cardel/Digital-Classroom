@@ -70,7 +70,8 @@ STATEMENTS = [
         attachment_path VARCHAR(500),
         resource_url VARCHAR(500),
         section VARCHAR(100),
-        subject VARCHAR(150)
+        subject VARCHAR(150),
+        max_score INT NOT NULL DEFAULT 100
     )
     """,
     """
@@ -81,6 +82,7 @@ STATEMENTS = [
         answer_text TEXT,
         file_path VARCHAR(500),
         submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        grade DECIMAL(6,2) NULL,
         UNIQUE KEY unique_activity_student (activity_id, student_id)
     )
     """,
@@ -110,8 +112,9 @@ STATEMENTS = [
         id INT AUTO_INCREMENT PRIMARY KEY,
         attendance_id INT NOT NULL,
         student_id INT NOT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'Present',
-        marked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        status VARCHAR(20) NOT NULL DEFAULT 'Notified',
+        notified_at DATETIME NULL,
+        marked_at DATETIME NULL,
         UNIQUE KEY unique_attendance_student (attendance_id, student_id)
     )
     """,
@@ -132,8 +135,11 @@ COLUMN_CHECKS = [
     ("activities", "resource_url", "VARCHAR(500) NULL"),
     ("activities", "attachment_path", "VARCHAR(500) NULL"),
     ("activities", "section", "VARCHAR(100) NULL"),
+    ("activities", "max_score", "INT NOT NULL DEFAULT 100"),
     ("announcements", "subject", "VARCHAR(150) NULL"),
     ("announcements", "attachment_path", "VARCHAR(500) NULL"),
+    ("submissions", "grade", "DECIMAL(6,2) NULL"),
+    ("attendance_records", "notified_at", "DATETIME NULL"),
 ]
 
 
@@ -149,6 +155,10 @@ def ensure_schema():
                 cursor.execute(
                     f"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}"
                 )
+        try:
+            cursor.execute("ALTER TABLE attendance_records MODIFY COLUMN marked_at DATETIME NULL")
+        except Exception:
+            pass
         connection.commit()
     finally:
         cursor.close()

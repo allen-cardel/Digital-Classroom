@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
   <h1 class="page-title">Administrator Dashboard</h1>
-  <p class="lede">Manage subjects, teacher assignments, irregular enrollments, and registered accounts.</p>
+  <p class="lede">Create accounts, manage subjects, teacher assignments, and Regular or Irregular enrollments.</p>
 
   <div class="tabs">
     <button class="tab active" data-tab="subjects" onclick="showTab('subjects')">Subjects & Assignments</button>
@@ -37,7 +37,7 @@
           </select>
         </div>
         <div class="field" style="align-self:end">
-          <button class="btn btn-gold btn-lg" type="submit"><span>Save / Assign Subject</span></button>
+          <button class="btn btn-gold btn-sm" type="submit"><span>Save / Assign Subject</span></button>
         </div>
       </form>
     </div>
@@ -95,17 +95,67 @@
         {% else %}
           <p class="muted">No subjects have been created yet.</p>
         {% endfor %}
-        <button class="btn btn-gold btn-lg" type="submit"><span>Save Enrollment</span></button>
+        <button class="btn btn-gold btn-sm" type="submit"><span>Save Enrollment</span></button>
       </form>
     </div>
   </section>
 
   <section class="hidden" data-tab-panel="users">
     <div class="panel">
+      <h3>Create an account</h3>
+      <p class="muted">Only administrators can create student and teacher accounts. Mark students as Regular or Irregular when you create them.</p>
+      <form method="post" action="{{ url_for('admin_create_account') }}">
+        <div class="grid-2">
+          <div class="field">
+            <label>Account type</label>
+            <select name="role" id="create-role" onchange="document.getElementById('student-fields').style.display = this.value === 'Student' ? 'block' : 'none'">
+              <option>Student</option>
+              <option>Teacher</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Full name</label>
+            <input name="fullname" required>
+          </div>
+          <div class="field">
+            <label>Email address <span class="muted">used as username</span></label>
+            <input name="email" placeholder="juandelacruz@phinmaed.com" required>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" name="password" required>
+          </div>
+          <div class="field">
+            <label>Confirm password</label>
+            <input type="password" name="confirm_password" required>
+          </div>
+        </div>
+        <div id="student-fields">
+          <div class="grid-2">
+            <div class="field">
+              <label>Section</label>
+              <select name="section">
+                {% for section in sections if section != 'All Sections' %}
+                  <option>{{ section }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label>Student status</label>
+              <select name="enrollment_type">
+                <option>Regular</option>
+                <option>Irregular</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-gold btn-sm" type="submit"><span>Create Account</span></button>
+      </form>
+    </div>
+    <div class="panel" style="margin-top:16px">
       <h3>Registered user accounts</h3>
-      <p class="muted">This page is a read-only overview. Teacher and student accounts are created through registration. Administrator accounts are created manually.</p>
       <table>
-        <tr><th>ID</th><th>Full name</th><th>Username / Email</th><th>Role</th><th>Section</th></tr>
+        <tr><th>ID</th><th>Full name</th><th>Username / Email</th><th>Role</th><th>Section</th><th>Status</th></tr>
         {% for account in accounts %}
           <tr>
             <td>{{ account.id }}</td>
@@ -113,6 +163,13 @@
             <td>{{ account.username }}</td>
             <td>{{ account.role }}</td>
             <td>{{ account.section }}</td>
+            <td>
+              {% if account.role == 'Student' %}
+                {{ enrollment_types.get(account.id, 'Regular') }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </table>

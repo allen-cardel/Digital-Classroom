@@ -93,7 +93,7 @@ def save_upload(file_storage, folder_key):
         return None, None, None
     original = secure_filename(file_storage.filename)
     if not original:
-        return None, None
+        return None, None, None
     ext = Path(original).suffix.lower()
     unique = f"{uuid.uuid4().hex}_{original}"
     destination = UPLOAD_ROOTS[folder_key] / unique
@@ -181,7 +181,11 @@ def subject_filter(items, subject_index):
     chosen = session.get("current_subject") or "All Subjects"
     if chosen == "All Subjects":
         return items, chosen
-    filtered = [item for item in items if (item[subject_index] or "") == chosen]
+    filtered = []
+    for item in items:
+        value = item.get(subject_index) if isinstance(item, dict) else item[subject_index]
+        if (value or "") == chosen:
+            filtered.append(item)
     return filtered, chosen
 
 
@@ -277,62 +281,8 @@ def login():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if current_user():
-        return redirect(url_for("home"))
-    if request.method == "POST":
-        fullname = request.form.get("fullname", "").strip()
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        confirm = request.form.get("confirm_password", "")
-        role = request.form.get("role", "Student")
-        section = request.form.get("section") if role == "Student" else None
-        if not fullname:
-            flash("Please enter your full name.", "error")
-        elif not EMAIL_RE.fullmatch(email):
-            flash(
-                "Please use your PHINMA Education email, for example juandelacruz@phinmaed.com.",
-                "error",
-            )
-        elif role == "Student" and not section:
-            flash("Please select your section.", "error")
-        elif not password or not PASSWORD_RE.fullmatch(password):
-            flash("Password may contain only letters, numbers, underscores and dashes.", "error")
-        elif password != confirm:
-            flash("Passwords do not match.", "error")
-        else:
-            try:
-                with db_cursor() as (_conn, cursor):
-                    cursor.execute(
-                        """
-                        SELECT id FROM users
-                        WHERE LOWER(username) = LOWER(%s) OR LOWER(email) = LOWER(%s)
-                        LIMIT 1
-                        """,
-                        (email, email),
-                    )
-                    if cursor.fetchone():
-                        flash("This email is already registered. Please sign in.", "error")
-                        return render_template("auth.html", mode="register")
-                    cursor.execute(
-                        """
-                        INSERT INTO users (username, password, role, section, fullname, email)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        """,
-                        (
-                            email,
-                            generate_password_hash(password),
-                            role,
-                            section,
-                            fullname,
-                            email,
-                        ),
-                    )
-                flash("Account created successfully. Sign in to enter the portal.", "success")
-                return redirect(url_for("login"))
-            except Exception as error:
-                flash(f"Could not create account: {error}", "error")
-        return render_template("auth.html", mode="register")
-    return render_template("auth.html", mode="register")
+    flash("Only an administrator can create accounts.", "warning")
+    return redirect(url_for("login"))
 
 
 @app.route("/logout")
@@ -375,9 +325,9 @@ def admin_dashboard():
         subjects = cursor.fetchall()
         cursor.execute(
             """
-            SELECT id, COALESCE(NULLIF(fullname, ''), username) AS name, username,
-                   COALESCE(section, 'Not assigned') AS section
-            FROM users WHERE role = 'Student' ORDER BY fullname, username
+            SELECT u.id, COALESCE(NULLIF(u.fullname, ''), u.username) AS name, u.username,
+                   COALESCE(u.section, 'Not assigned') AS section
+            FROM users u WHERE u.role = 'Student' ORDER BY u.fullname, u.username
             """
         )
         students = cursor.fetchall()
@@ -478,6 +428,76 @@ def admin_save_enrollment():
                     (student_id, int(subject_id)),
                 )
     flash("Enrollment saved.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/accounts", methods=["POST"])
+@login_required("Administrator")
+def admin_create_account():
+    fullname = request.form.get("fullname", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+    confirm = request.form.get("confirm_password", "")
+    role = request.form.get("role", "Student")
+    section = request.form.get("section") if role == "Student" else None
+    enrollment_type = request.form.get("enrollment_type", "Regular")
+    if role not in ("Student", "Teacher"):
+        flash("Choose Student or Teacher.", "warning")
+        return redirect(url_for("admin_dashboard"))
+    if not fullname:
+        flash("Please enter the full name.", "error")
+    elif not EMAIL_RE.fullmatch(email):
+        flash(
+            "Please use a PHINMA Education email, for example juandelacruz@phinmaed.com.",
+            "error",
+        )
+    elif role == "Student" and not section:
+        flash("Please select the student's section.", "error")
+    elif not password or not PASSWORD_RE.fullmatch(password):
+        flash("Password may contain only letters, numbers, underscores and dashes.", "error")
+    elif password != confirm:
+        flash("Passwords do not match.", "error")
+    else:
+        try:
+            with db_cursor() as (_conn, cursor):
+                cursor.execute(
+                    """
+                    SELECT id FROM users
+                    WHERE LOWER(username) = LOWER(%s) OR LOWER(email) = LOWER(%s)
+                    LIMIT 1
+                    """,
+                    (email, email),
+                )
+                if cursor.fetchone():
+                    flash("This email is already registered.", "error")
+                    return redirect(url_for("admin_dashboard"))
+                cursor.execute(
+                    """
+                    INSERT INTO users (username, password, role, section, fullname, email)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        email,
+                        generate_password_hash(password),
+                        role,
+                        section,
+                        fullname,
+                        email,
+                    ),
+                )
+                user_id = cursor.lastrowid
+                if role == "Student":
+                    cursor.execute(
+                        """
+                        INSERT INTO student_enrollment_types (student_id, enrollment_type)
+                        VALUES (%s, %s)
+                        ON DUPLICATE KEY UPDATE enrollment_type=VALUES(enrollment_type)
+                        """,
+                        (user_id, enrollment_type if enrollment_type in ("Regular", "Irregular") else "Regular"),
+                    )
+            flash(f"{role} account created.", "success")
+        except Exception as error:
+            flash(f"Could not create account: {error}", "error")
     return redirect(url_for("admin_dashboard"))
 
 
@@ -591,6 +611,35 @@ def teacher_attendance():
     )
 
 
+def students_for_section(section):
+    with db_cursor(dictionary=True) as (_conn, cursor):
+        if section and section != "All Sections":
+            cursor.execute(
+                """
+                SELECT id, username, fullname, section
+                FROM users WHERE role = 'Student' AND section = %s
+                ORDER BY fullname, username
+                """,
+                (section,),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT id, username, fullname, section
+                FROM users WHERE role = 'Student'
+                ORDER BY fullname, username
+                """
+            )
+        return cursor.fetchall()
+
+
+def split_deadline(value):
+    parsed = parse_deadline(value)
+    if not parsed:
+        return "", "23:59"
+    return parsed.strftime("%Y-%m-%d"), parsed.strftime("%H:%M")
+
+
 @app.route("/teacher/attendance-records")
 @login_required("Teacher")
 def teacher_attendance_records():
@@ -598,77 +647,203 @@ def teacher_attendance_records():
     with db_cursor(dictionary=True) as (_conn, cursor):
         cursor.execute(
             """
-            SELECT a.id AS attendance_id, a.title, a.section, a.attendance_date, a.deadline,
-                   u.username AS student_name, u.fullname, r.status, r.marked_at
-            FROM attendance_sessions a
-            LEFT JOIN attendance_records r ON r.attendance_id = a.id
-            LEFT JOIN users u ON u.id = r.student_id AND u.role = 'Student'
-            WHERE a.created_by = %s
-            ORDER BY a.attendance_date DESC, a.created_at DESC, u.username
+            SELECT id, title, section, attendance_date, deadline
+            FROM attendance_sessions
+            WHERE created_by = %s
+            ORDER BY attendance_date DESC, created_at DESC
             """,
             (user["id"],),
         )
-        rows = cursor.fetchall()
-    grouped = {}
-    for row in rows:
-        aid = row["attendance_id"]
-        grouped.setdefault(
-            aid,
-            {
-                "title": row["title"],
-                "section": row["section"] or "All Sections",
-                "attendance_date": row["attendance_date"],
-                "deadline": row["deadline"],
-                "students": [],
-            },
+        sessions = cursor.fetchall()
+        cursor.execute(
+            """
+            SELECT attendance_id, student_id, status, notified_at, marked_at
+            FROM attendance_records
+            """
         )
-        if row["student_name"]:
-            grouped[aid]["students"].append(row)
+        record_map = {}
+        for row in cursor.fetchall():
+            record_map.setdefault(row["attendance_id"], {})[row["student_id"]] = row
+    grouped = []
+    for session in sessions:
+        section = session["section"] or "All Sections"
+        students = []
+        for student in students_for_section(section):
+            record = record_map.get(session["id"], {}).get(student["id"])
+            students.append(
+                {
+                    "student_id": student["id"],
+                    "student_name": student["username"],
+                    "fullname": student["fullname"],
+                    "section": student["section"],
+                    "status": record["status"] if record else None,
+                    "notified_at": record["notified_at"] if record else None,
+                    "marked_at": record["marked_at"] if record else None,
+                }
+            )
+        grouped.append(
+            {
+                "id": session["id"],
+                "title": session["title"],
+                "section": section,
+                "attendance_date": session["attendance_date"],
+                "deadline": session["deadline"],
+                "students": students,
+            }
+        )
     return render_template(
         "teacher.html",
         page="attendance_records",
         **teacher_nav(),
-        records=list(grouped.values()),
+        records=grouped,
     )
 
 
-@app.route("/teacher/modules", methods=["GET", "POST"])
+@app.route("/teacher/attendance/<int:attendance_id>/mark/<int:student_id>", methods=["POST"])
 @login_required("Teacher")
-def teacher_modules():
+def teacher_mark_present(attendance_id, student_id):
+    user = current_user()
+    with db_cursor() as (_conn, cursor):
+        cursor.execute(
+            "SELECT id FROM attendance_sessions WHERE id=%s AND created_by=%s",
+            (attendance_id, user["id"]),
+        )
+        if not cursor.fetchone():
+            flash("Attendance session not found.", "error")
+            return redirect(url_for("teacher_attendance_records"))
+        cursor.execute(
+            """
+            INSERT INTO attendance_records (attendance_id, student_id, status, notified_at, marked_at)
+            VALUES (%s, %s, 'Present', NULL, NOW())
+            ON DUPLICATE KEY UPDATE status='Present', marked_at=NOW()
+            """,
+            (attendance_id, student_id),
+        )
+    flash("Student marked Present.", "success")
+    return redirect(url_for("teacher_attendance_records"))
+
+
+@app.route("/teacher/upload")
+@login_required("Teacher")
+def teacher_upload_choose():
+    return render_template(
+        "teacher.html",
+        page="upload_choose",
+        **teacher_nav(),
+    )
+
+
+def save_module_from_form(redirect_to):
+    title = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    url = request.form.get("url", "").strip()
+    section = request.form.get("section", "Section A")
+    subject = request.form.get("subject")
+    uploaded = request.files.get("file")
+    path, filename, _ext = save_upload(uploaded, "uploaded_modules")
+    if not title or not description:
+        flash("Please enter the module title and description.", "warning")
+        return redirect(url_for(redirect_to))
+    if not path and not url:
+        flash("Attach a module file or enter a module link.", "warning")
+        return redirect(url_for(redirect_to))
+    if url and not url.lower().startswith(("https://", "http://")):
+        flash("The module link must start with https:// or http://.", "warning")
+        return redirect(url_for(redirect_to))
+    module_type = "both" if path and url else ("file" if path else "link")
+    if subject == "No assigned subjects":
+        subject = None
+    with db_cursor() as (_conn, cursor):
+        cursor.execute(
+            """
+            INSERT INTO modules
+            (title, description, filename, filepath, module_type, url, section, subject)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (title, description, filename, path, module_type, url or None, section, subject),
+        )
+    flash("Module posted.", "success")
+    return redirect(url_for("teacher_modules"))
+
+
+def save_activity_from_form(redirect_to):
+    title = request.form.get("title", "").strip()
+    instructions = request.form.get("instructions", "").strip()
+    due_date = request.form.get("due_date", "").strip()
+    due_time = request.form.get("due_time", "").strip()
+    resource_url = request.form.get("resource_url", "").strip()
+    section = request.form.get("section", "Section A")
+    subject = request.form.get("subject")
+    max_score_text = request.form.get("max_score", "100").strip()
+    path, _name, _ext = save_upload(request.files.get("attachment"), "uploaded_activities")
+    if not title or not instructions or not due_date or not due_time:
+        flash("Please enter the title, instructions, due date, and due time.", "warning")
+        return redirect(url_for(redirect_to))
+    try:
+        datetime.strptime(due_time, "%H:%M")
+    except ValueError:
+        flash("Enter the due time in 24-hour HH:MM format.", "warning")
+        return redirect(url_for(redirect_to))
+    try:
+        max_score = int(max_score_text)
+        if max_score < 1:
+            raise ValueError
+    except ValueError:
+        flash("Enter how many points the student can receive as a whole number of 1 or more.", "warning")
+        return redirect(url_for(redirect_to))
+    if resource_url and not resource_url.startswith(("https://", "http://")):
+        flash("The resource link must start with https:// or http://.", "warning")
+        return redirect(url_for(redirect_to))
+    if subject == "No assigned subjects":
+        subject = None
+    deadline = f"{due_date} {due_time}:00"
+    with db_cursor() as (_conn, cursor):
+        cursor.execute(
+            """
+            INSERT INTO activities
+            (title, description, due_date, attachment_path, resource_url, section, subject, max_score)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (title, instructions, deadline, path, resource_url or None, section, subject, max_score),
+        )
+    flash("Activity assigned.", "success")
+    return redirect(url_for("teacher_activities"))
+
+
+@app.route("/teacher/upload/module", methods=["GET", "POST"])
+@login_required("Teacher")
+def teacher_upload_module():
     user = current_user()
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        description = request.form.get("description", "").strip()
-        url = request.form.get("url", "").strip()
-        section = request.form.get("section", "Section A")
-        subject = request.form.get("subject")
-        uploaded = request.files.get("file")
-        path, filename, _ext = save_upload(uploaded, "uploaded_modules")
-        if not title or not description:
-            flash("Please enter the module title and description.", "warning")
-            return redirect(url_for("teacher_modules"))
-        if not path and not url:
-            flash("Attach a module file or enter a module link.", "warning")
-            return redirect(url_for("teacher_modules"))
-        if url and not url.lower().startswith(("https://", "http://")):
-            flash("The module link must start with https:// or http://.", "warning")
-            return redirect(url_for("teacher_modules"))
-        module_type = "both" if path and url else ("file" if path else "link")
-        if subject == "No assigned subjects":
-            subject = None
-        with db_cursor() as (_conn, cursor):
-            cursor.execute(
-                """
-                INSERT INTO modules
-                (title, description, filename, filepath, module_type, url, section, subject)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (title, description, filename, path, module_type, url or None, section, subject),
-            )
-        flash("Module posted.", "success")
-        return redirect(url_for("teacher_modules"))
+        return save_module_from_form("teacher_upload_module")
+    return render_template(
+        "teacher.html",
+        page="upload_module",
+        **teacher_nav(),
+        sections=SECTIONS,
+        subject_options=get_assigned_subjects(user["id"]),
+    )
 
-    with db_cursor() as (_conn, cursor):
+
+@app.route("/teacher/upload/activity", methods=["GET", "POST"])
+@login_required("Teacher")
+def teacher_upload_activity():
+    user = current_user()
+    if request.method == "POST":
+        return save_activity_from_form("teacher_upload_activity")
+    return render_template(
+        "teacher.html",
+        page="upload_activity",
+        **teacher_nav(),
+        sections=SECTIONS,
+        subject_options=get_assigned_subjects(user["id"]),
+    )
+
+
+@app.route("/teacher/modules")
+@login_required("Teacher")
+def teacher_modules():
+    with db_cursor(dictionary=True) as (_conn, cursor):
         cursor.execute(
             """
             SELECT id, title, description, filename, filepath, url, uploaded_at, section, subject
@@ -676,15 +851,66 @@ def teacher_modules():
             """
         )
         modules = cursor.fetchall()
-    modules, chosen = subject_filter(modules, 8)
+    modules, chosen = subject_filter(modules, "subject")
     return render_template(
         "teacher.html",
         page="modules",
         **teacher_nav(),
         modules=modules,
+        chosen_subject=chosen,
+    )
+
+
+@app.route("/teacher/modules/<int:module_id>/edit", methods=["GET", "POST"])
+@login_required("Teacher")
+def teacher_edit_module(module_id):
+    user = current_user()
+    with db_cursor(dictionary=True) as (_conn, cursor):
+        cursor.execute("SELECT * FROM modules WHERE id=%s", (module_id,))
+        module = cursor.fetchone()
+    if not module:
+        flash("This module no longer exists.", "error")
+        return redirect(url_for("teacher_modules"))
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        url = request.form.get("url", "").strip()
+        section = request.form.get("section", "Section A")
+        subject = request.form.get("subject")
+        path, filename, _ext = save_upload(request.files.get("file"), "uploaded_modules")
+        if not title or not description:
+            flash("Please enter the module title and description.", "warning")
+            return redirect(url_for("teacher_edit_module", module_id=module_id))
+        if url and not url.lower().startswith(("https://", "http://")):
+            flash("The module link must start with https:// or http://.", "warning")
+            return redirect(url_for("teacher_edit_module", module_id=module_id))
+        filepath = path or module["filepath"]
+        filename = filename or module["filename"]
+        if not filepath and not url:
+            flash("Attach a module file or enter a module link.", "warning")
+            return redirect(url_for("teacher_edit_module", module_id=module_id))
+        if subject == "No assigned subjects":
+            subject = None
+        module_type = "both" if filepath and url else ("file" if filepath else "link")
+        with db_cursor() as (_conn, cursor):
+            cursor.execute(
+                """
+                UPDATE modules
+                SET title=%s, description=%s, filename=%s, filepath=%s, module_type=%s,
+                    url=%s, section=%s, subject=%s
+                WHERE id=%s
+                """,
+                (title, description, filename, filepath, module_type, url or None, section, subject, module_id),
+            )
+        flash("Module updated.", "success")
+        return redirect(url_for("teacher_modules"))
+    return render_template(
+        "teacher.html",
+        page="edit_module",
+        **teacher_nav(),
+        module=module,
         sections=SECTIONS,
         subject_options=get_assigned_subjects(user["id"]),
-        chosen_subject=chosen,
     )
 
 
@@ -697,58 +923,23 @@ def teacher_delete_module(module_id):
     return redirect(url_for("teacher_modules"))
 
 
-@app.route("/teacher/activities", methods=["GET", "POST"])
+@app.route("/teacher/activities")
 @login_required("Teacher")
 def teacher_activities():
-    user = current_user()
-    if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        instructions = request.form.get("instructions", "").strip()
-        due_date = request.form.get("due_date", "").strip()
-        due_time = request.form.get("due_time", "").strip()
-        resource_url = request.form.get("resource_url", "").strip()
-        section = request.form.get("section", "Section A")
-        subject = request.form.get("subject")
-        path, _name, _ext = save_upload(request.files.get("attachment"), "uploaded_activities")
-        if not title or not instructions or not due_date or not due_time:
-            flash("Please enter the title, instructions, due date, and due time.", "warning")
-            return redirect(url_for("teacher_activities"))
-        try:
-            datetime.strptime(due_time, "%H:%M")
-        except ValueError:
-            flash("Enter the due time in 24-hour HH:MM format.", "warning")
-            return redirect(url_for("teacher_activities"))
-        if resource_url and not resource_url.startswith(("https://", "http://")):
-            flash("The resource link must start with https:// or http://.", "warning")
-            return redirect(url_for("teacher_activities"))
-        if subject == "No assigned subjects":
-            subject = None
-        deadline = f"{due_date} {due_time}:00"
-        with db_cursor() as (_conn, cursor):
-            cursor.execute(
-                """
-                INSERT INTO activities
-                (title, description, due_date, attachment_path, resource_url, section, subject)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """,
-                (title, instructions, deadline, path, resource_url or None, section, subject),
-            )
-        flash("Activity assigned.", "success")
-        return redirect(url_for("teacher_activities"))
-
-    with db_cursor() as (_conn, cursor):
+    with db_cursor(dictionary=True) as (_conn, cursor):
         cursor.execute(
             """
-            SELECT id, title, description, due_date, attachment_path, resource_url, section, subject
+            SELECT id, title, description, due_date, attachment_path, resource_url,
+                   section, subject, max_score
             FROM activities ORDER BY due_date
             """
         )
         activities = cursor.fetchall()
-    activities, chosen = subject_filter(activities, 7)
+    activities, chosen = subject_filter(activities, "subject")
     upcoming, overdue = [], []
     now = datetime.now()
     for activity in activities:
-        deadline = parse_deadline(activity[3])
+        deadline = parse_deadline(activity["due_date"])
         if deadline and now > deadline:
             overdue.append(activity)
         else:
@@ -759,9 +950,84 @@ def teacher_activities():
         **teacher_nav(),
         upcoming=upcoming,
         overdue=overdue,
+        chosen_subject=chosen,
+    )
+
+
+@app.route("/teacher/activities/<int:activity_id>/edit", methods=["GET", "POST"])
+@login_required("Teacher")
+def teacher_edit_activity(activity_id):
+    user = current_user()
+    with db_cursor(dictionary=True) as (_conn, cursor):
+        cursor.execute("SELECT * FROM activities WHERE id=%s", (activity_id,))
+        activity = cursor.fetchone()
+    if not activity:
+        flash("This activity no longer exists.", "error")
+        return redirect(url_for("teacher_activities"))
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        instructions = request.form.get("instructions", "").strip()
+        due_date = request.form.get("due_date", "").strip()
+        due_time = request.form.get("due_time", "").strip()
+        resource_url = request.form.get("resource_url", "").strip()
+        section = request.form.get("section", "Section A")
+        subject = request.form.get("subject")
+        max_score_text = request.form.get("max_score", "100").strip()
+        path, _name, _ext = save_upload(request.files.get("attachment"), "uploaded_activities")
+        if not title or not instructions or not due_date or not due_time:
+            flash("Please enter the title, instructions, due date, and due time.", "warning")
+            return redirect(url_for("teacher_edit_activity", activity_id=activity_id))
+        try:
+            datetime.strptime(due_time, "%H:%M")
+        except ValueError:
+            flash("Enter the due time in 24-hour HH:MM format.", "warning")
+            return redirect(url_for("teacher_edit_activity", activity_id=activity_id))
+        try:
+            max_score = int(max_score_text)
+            if max_score < 1:
+                raise ValueError
+        except ValueError:
+            flash("Enter how many points the student can receive as a whole number of 1 or more.", "warning")
+            return redirect(url_for("teacher_edit_activity", activity_id=activity_id))
+        if resource_url and not resource_url.startswith(("https://", "http://")):
+            flash("The resource link must start with https:// or http://.", "warning")
+            return redirect(url_for("teacher_edit_activity", activity_id=activity_id))
+        if subject == "No assigned subjects":
+            subject = None
+        deadline = f"{due_date} {due_time}:00"
+        attachment = path or activity["attachment_path"]
+        with db_cursor() as (_conn, cursor):
+            cursor.execute(
+                """
+                UPDATE activities
+                SET title=%s, description=%s, due_date=%s, attachment_path=%s,
+                    resource_url=%s, section=%s, subject=%s, max_score=%s
+                WHERE id=%s
+                """,
+                (
+                    title,
+                    instructions,
+                    deadline,
+                    attachment,
+                    resource_url or None,
+                    section,
+                    subject,
+                    max_score,
+                    activity_id,
+                ),
+            )
+        flash("Activity updated.", "success")
+        return redirect(url_for("teacher_activities"))
+    due_date, due_time = split_deadline(activity["due_date"])
+    return render_template(
+        "teacher.html",
+        page="edit_activity",
+        **teacher_nav(),
+        activity=activity,
+        due_date=due_date,
+        due_time=due_time,
         sections=SECTIONS,
         subject_options=get_assigned_subjects(user["id"]),
-        chosen_subject=chosen,
     )
 
 
@@ -780,9 +1046,9 @@ def teacher_students_work():
     with db_cursor(dictionary=True) as (_conn, cursor):
         cursor.execute(
             """
-            SELECT a.id AS activity_id, a.title AS activity_title, a.due_date,
+            SELECT a.id AS activity_id, a.title AS activity_title, a.due_date, a.max_score,
                    u.id AS student_id, u.username AS student_name, u.fullname, u.section,
-                   s.id AS submission_id, s.answer_text, s.file_path, s.submitted_at
+                   s.id AS submission_id, s.answer_text, s.file_path, s.submitted_at, s.grade
             FROM activities a
             JOIN users u ON (
                 a.section = u.section OR a.section = 'All Sections'
@@ -803,6 +1069,38 @@ def teacher_students_work():
         submitted=submitted,
         missing=missing,
     )
+
+
+@app.route("/teacher/grade/<int:submission_id>", methods=["POST"])
+@login_required("Teacher")
+def teacher_save_grade(submission_id):
+    grade_text = request.form.get("grade", "").strip()
+    with db_cursor() as (_conn, cursor):
+        cursor.execute(
+            """
+            SELECT s.id, a.max_score
+            FROM submissions s
+            JOIN activities a ON a.id = s.activity_id
+            WHERE s.id=%s
+            """,
+            (submission_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            flash("Submission not found.", "error")
+            return redirect(url_for("teacher_students_work"))
+        try:
+            grade = float(grade_text)
+        except ValueError:
+            flash("Enter a valid grade.", "warning")
+            return redirect(url_for("teacher_students_work"))
+        max_score = float(row[1] or 100)
+        if grade < 0 or grade > max_score:
+            flash(f"Grade must be between 0 and {max_score:.0f}.", "warning")
+            return redirect(url_for("teacher_students_work"))
+        cursor.execute("UPDATE submissions SET grade=%s WHERE id=%s", (grade, submission_id))
+    flash("Grade saved.", "success")
+    return redirect(url_for("teacher_students_work"))
 
 
 @app.route("/teacher/history/<int:activity_id>/<int:student_id>")
@@ -866,10 +1164,25 @@ def handle_profile(template):
         flash("Profile updated.", "success")
         return redirect(request.path)
     profile = load_profile(user["username"]) or {}
+    enrollment_status = None
+    if user["role"] == "Student":
+        with db_cursor() as (_conn, cursor):
+            cursor.execute(
+                "SELECT enrollment_type FROM student_enrollment_types WHERE student_id=%s",
+                (user["id"],),
+            )
+            row = cursor.fetchone()
+            enrollment_status = row[0] if row else "Regular"
     extra = teacher_nav() if user["role"] == "Teacher" else {
         "subjects": ["All Subjects"] + get_student_subjects(user["id"], user["section"])
     }
-    return render_template(template, page="profile", profile=profile, **extra)
+    return render_template(
+        template,
+        page="profile",
+        profile=profile,
+        enrollment_status=enrollment_status,
+        **extra,
+    )
 
 
 def student_nav():
@@ -912,6 +1225,15 @@ def student_dashboard():
             (user["section"],),
         )
         announcement_count = cursor.fetchone()[0]
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM attendance_sessions
+            WHERE attendance_date = CURDATE()
+              AND (section = %s OR section = 'All Sections' OR section IS NULL OR section = '')
+            """,
+            (user["section"],),
+        )
+        attendance_count = cursor.fetchone()[0]
     return render_template(
         "student.html",
         page="dashboard",
@@ -920,6 +1242,7 @@ def student_dashboard():
         pending_count=len(pending),
         module_count=module_count,
         announcement_count=announcement_count,
+        attendance_count=attendance_count,
     )
 
 
@@ -968,7 +1291,7 @@ def student_activities():
         cursor.execute(
             """
             SELECT a.id, a.title, a.description, a.due_date, a.attachment_path,
-                   a.resource_url, a.subject
+                   a.resource_url, a.subject, a.max_score
             FROM activities a
             LEFT JOIN submissions s ON s.activity_id = a.id AND s.student_id = %s
             WHERE (a.section = %s OR a.section = 'All Sections' OR a.section IS NULL)
@@ -1003,7 +1326,7 @@ def student_submit(activity_id):
     user = current_user()
     with db_cursor() as (_conn, cursor):
         cursor.execute(
-            "SELECT id, title, due_date FROM activities WHERE id=%s",
+            "SELECT id, title, due_date, max_score FROM activities WHERE id=%s",
             (activity_id,),
         )
         activity = cursor.fetchone()
@@ -1072,7 +1395,7 @@ def student_history():
         cursor.execute(
             """
             SELECT s.id AS submission_id, s.activity_id, s.answer_text, s.file_path,
-                   s.submitted_at, a.title AS activity_title
+                   s.submitted_at, s.grade, a.title AS activity_title, a.max_score
             FROM submissions s
             JOIN activities a ON a.id = s.activity_id
             WHERE s.student_id=%s
@@ -1129,10 +1452,19 @@ def student_announcements():
             (user["section"],),
         )
         announcements = cursor.fetchall()
+    return render_template(
+        "student.html",
+        page="announcements",
+        **student_nav(),
+        announcements=announcements,
+    )
+
+
+def load_student_attendance(user):
     with db_cursor(dictionary=True) as (_conn, cursor):
         cursor.execute(
             """
-            SELECT a.id, a.title, a.section, a.deadline, r.status, r.marked_at
+            SELECT a.id, a.title, a.section, a.deadline, r.status, r.notified_at, r.marked_at
             FROM attendance_sessions a
             LEFT JOIN attendance_records r
               ON r.attendance_id = a.id AND r.student_id = %s
@@ -1149,19 +1481,25 @@ def student_announcements():
         if isinstance(deadline, str):
             deadline = datetime.strptime(deadline, "%Y-%m-%d %H:%M:%S")
         item["deadline_dt"] = deadline
-        item["open"] = now < deadline and not item["marked_at"]
+        item["open"] = now < deadline and item["status"] != "Present"
+    return attendance_items
+
+
+@app.route("/student/attendance")
+@login_required("Student")
+def student_attendance():
+    user = current_user()
     return render_template(
         "student.html",
-        page="announcements",
+        page="attendance",
         **student_nav(),
-        announcements=announcements,
-        attendance_items=attendance_items,
+        attendance_items=load_student_attendance(user),
     )
 
 
 @app.route("/student/attendance/<int:attendance_id>", methods=["POST"])
 @login_required("Student")
-def student_mark_attendance(attendance_id):
+def student_notify_attendance(attendance_id):
     user = current_user()
     with db_cursor() as (_conn, cursor):
         cursor.execute(
@@ -1171,22 +1509,36 @@ def student_mark_attendance(attendance_id):
         row = cursor.fetchone()
         if not row:
             flash("This attendance session no longer exists.", "error")
-            return redirect(url_for("student_announcements"))
+            return redirect(url_for("student_attendance"))
         deadline = row[0]
         if isinstance(deadline, str):
             deadline = datetime.strptime(deadline, "%Y-%m-%d %H:%M:%S")
         if datetime.now() >= deadline:
-            flash("The deadline has passed. You can no longer mark attendance.", "warning")
-            return redirect(url_for("student_announcements"))
+            flash("The deadline has passed. You can no longer notify your teacher.", "warning")
+            return redirect(url_for("student_attendance"))
         cursor.execute(
             """
-            INSERT IGNORE INTO attendance_records (attendance_id, student_id, status, marked_at)
-            VALUES (%s, %s, 'Present', NOW())
+            SELECT status FROM attendance_records
+            WHERE attendance_id=%s AND student_id=%s
             """,
             (attendance_id, user["id"]),
         )
-    flash("Your Present status has been saved.", "success")
-    return redirect(url_for("student_announcements"))
+        existing = cursor.fetchone()
+        if existing and existing[0] == "Present":
+            flash("Your teacher already marked you Present.", "success")
+            return redirect(url_for("student_attendance"))
+        if existing:
+            flash("Your teacher has already been notified.", "success")
+            return redirect(url_for("student_attendance"))
+        cursor.execute(
+            """
+            INSERT INTO attendance_records (attendance_id, student_id, status, notified_at, marked_at)
+            VALUES (%s, %s, 'Notified', NOW(), NULL)
+            """,
+            (attendance_id, user["id"]),
+        )
+    flash("Your teacher has been notified that you are present. Wait for them to confirm.", "success")
+    return redirect(url_for("student_attendance"))
 
 
 @app.route("/student/reviewer", methods=["GET", "POST"])

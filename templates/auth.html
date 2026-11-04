@@ -1,84 +1,32 @@
 {% extends "base_auth.html" %}
-{% set title = "Sign In | Classroom Portal" %}
+{% set title = "Sign In | Student Classroom" %}
 {% block body %}
 <div class="auth-shell">
   <aside class="auth-hero">
-    <div class="auth-kicker">PHINMA Classroom</div>
+    <div class="auth-kicker">Student Classroom</div>
     <h1>Interactive Digital Resources Portal</h1>
-    <p>A dramatic, living classroom for announcements, modules, activities, attendance, and review.</p>
     <div class="gold-rule"></div>
-    <p>Teachers post. Students submit. Administrators keep every section in order.</p>
   </aside>
   <section class="auth-panel">
     <div class="card auth-card">
       {% include "_flashes.html" %}
-      {% if mode == "register" %}
-        <h2>Create account</h2>
-        <p class="sub">Join your classroom portal with your PHINMA Education email.</p>
-        <form method="post" action="{{ url_for('register') }}">
-          <div class="field">
-            <label>Account type</label>
-            <select name="role" id="role" onchange="document.getElementById('section-wrap').style.display = this.value === 'Student' ? 'block' : 'none'">
-              <option>Student</option>
-              <option>Teacher</option>
-            </select>
+      <h2>Welcome back</h2>
+      <p class="sub">Sign in to continue to your account.</p>
+      <form method="post" action="{{ url_for('login') }}">
+        <div class="field">
+          <label>Username <span class="muted">name@phinmaed.com</span></label>
+          <input name="username" required>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <div class="row">
+            <input id="login-pass" type="password" name="password" required>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="togglePassword('login-pass', this)"><span>Show</span></button>
           </div>
-          <div class="field">
-            <label>Full name <span class="muted">(Surname, First name, M.I)</span></label>
-            <input name="fullname" required>
-          </div>
-          <div class="field" id="section-wrap">
-            <label>Section</label>
-            <select name="section">
-              <option value="">Select section</option>
-              <option>Section A</option>
-              <option>Section B</option>
-              <option>Section C</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Email address <span class="muted">used as username</span></label>
-            <input name="email" placeholder="juandelacruz@phinmaed.com" required>
-          </div>
-          <div class="field">
-            <label>Password</label>
-            <div class="row">
-              <input id="reg-pass" type="password" name="password" required>
-              <button class="btn btn-ghost btn-sm" type="button" onclick="togglePassword('reg-pass', this)"><span>Show</span></button>
-            </div>
-          </div>
-          <div class="field">
-            <label>Confirm password</label>
-            <div class="row">
-              <input id="reg-confirm" type="password" name="confirm_password" required>
-              <button class="btn btn-ghost btn-sm" type="button" onclick="togglePassword('reg-confirm', this)"><span>Show</span></button>
-            </div>
-          </div>
-          <button class="btn btn-gold btn-xl" type="submit"><span>Create Account</span></button>
-        </form>
-        <p><a href="{{ url_for('terms') }}">Read Terms & Conditions and Privacy</a></p>
-        <p><a class="btn btn-ghost btn-xl" href="{{ url_for('login') }}"><span>← Back to Sign In</span></a></p>
-      {% else %}
-        <h2>Welcome back</h2>
-        <p class="sub">Sign in to continue to your account.</p>
-        <form method="post" action="{{ url_for('login') }}">
-          <div class="field">
-            <label>Username <span class="muted">name@phinmaed.com</span></label>
-            <input name="username" required>
-          </div>
-          <div class="field">
-            <label>Password</label>
-            <div class="row">
-              <input id="login-pass" type="password" name="password" required>
-              <button class="btn btn-ghost btn-sm" type="button" onclick="togglePassword('login-pass', this)"><span>Show</span></button>
-            </div>
-          </div>
-          <button class="btn btn-gold btn-xl" type="submit"><span>Sign In</span></button>
-        </form>
-        <p><a href="{{ url_for('terms') }}">Terms & Conditions | Privacy</a></p>
-        <p class="muted">Don't have an account?</p>
-        <a class="btn btn-navy btn-xl" href="{{ url_for('register') }}"><span>Create an account</span></a>
-      {% endif %}
+        </div>
+        <button class="btn btn-gold btn-xl" type="submit"><span>Sign In</span></button>
+      </form>
+      <p><a href="{{ url_for('terms') }}">Terms & Conditions | Privacy</a></p>
     </div>
   </section>
 </div>
