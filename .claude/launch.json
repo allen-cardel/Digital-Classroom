@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "student-classroom",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "flask", "--app", "app", "run", "--port", "5005"],
+      "port": 5005
+    }
+  ]
+}

@@ -1,16 +1,29 @@
 {% extends "base_auth.html" %}
-{% set title = "Terms and Conditions" %}
+{% set title = "Terms of Use and Privacy Notice" %}
 {% block body %}
 <div class="auth-panel" style="min-height:100vh">
   <div class="card auth-card" style="width:min(720px,100%)">
-    <h2>Terms and Conditions & Privacy</h2>
-    <p class="sub">Interactive Digital Resources Portal</p>
-    <p><b>1. Account information</b><br>Your email address is used as your username. Only an administrator can create student and teacher accounts and mark a student as Regular or Irregular.</p>
-    <p><b>2. Use of information</b><br>Account details identify users and provide the matching teacher, student, or administrator tools.</p>
-    <p><b>3. Privacy and access</b><br>Do not share your password. Teachers and authorized administrators should only access student information for legitimate classroom purposes.</p>
-    <p><b>4. Uploaded materials</b><br>Upload only school-related materials you are allowed to share.</p>
-    <p><b>5. Data Privacy and Confidentiality</b><br>Personal information shared through this portal is kept confidential except when required by law.</p>
-    <p><b>6. Questions</b><br>Contact your teacher or the person managing this school project.</p>
+    <h2>Terms of Use and Privacy Notice</h2>
+    <p class="sub">Interactive Digital Classroom</p>
+
+    <p><b>1. Access</b><br>
+    This portal is a classroom system for authorized school users. Accounts are created and issued only by an administrator. Self-registration is not available. Sign in only with the credentials provided to you.</p>
+
+    <p><b>2. Acceptable use</b><br>
+    Use this portal for legitimate classroom purposes. Keep your password confidential and do not attempt to access another person’s account or data.</p>
+
+    <p><b>3. Learning materials</b><br>
+    Upload only school-related files and links that you are authorized to share. Do not post unlawful, harmful, or unrelated content.</p>
+
+    <p><b>4. Privacy</b><br>
+    Information such as name, school email, contact number, section, and academic records is used only to operate this portal. Access is limited to the account holder, assigned teachers, and administrators. Information is not sold or shared except as required by law or school policy.</p>
+
+    <p><b>5. Responsibility</b><br>
+    You are responsible for activity under your account. Notify an administrator if you believe your login details have been compromised.</p>
+
+    <p><b>6. Questions</b><br>
+    For account access or privacy concerns, contact your school administrator.</p>
+
     <a class="btn btn-navy btn-xl" href="{{ url_for('login') }}"><span>Close</span></a>
   </div>
 </div>

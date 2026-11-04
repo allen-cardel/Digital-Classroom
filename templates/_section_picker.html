@@ -1,0 +1,8 @@
+<form class="chip-row" method="post" action="{{ url_for('set_section') }}">
+  <input type="hidden" name="next" value="{{ request.path }}">
+  {% for section in sections %}
+    <button class="chip {% if current_section == section %}active{% endif %}" name="section" value="{{ section }}">
+      {% if current_section == section %}✓ {% endif %}{{ section }}
+    </button>
+  {% endfor %}
+</form>

@@ -41,6 +41,8 @@ PHOTO_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@phinmaed\.com", re.IGNORECASE)
 USERNAME_RE = re.compile(r"[A-Za-z0-9_-]+")
 PASSWORD_RE = re.compile(r"[A-Za-z0-9_-]+")
+FULLNAME_RE = re.compile(r"[A-Za-z](?:[A-Za-z .'-]*[A-Za-z.])?")
+CONTACT_RE = re.compile(r"\d+")
 
 
 def setup_app():
@@ -189,6 +191,26 @@ def subject_filter(items, subject_index):
     return filtered, chosen
 
 
+def section_filter(items, section_index="section"):
+    chosen = session.get("current_section") or "All Sections"
+    if chosen == "All Sections":
+        return items, chosen
+    filtered = []
+    for item in items:
+        value = item.get(section_index) if isinstance(item, dict) else item[section_index]
+        if (value or "") == chosen:
+            filtered.append(item)
+    return filtered, chosen
+
+
+def valid_fullname(value):
+    return bool(value and FULLNAME_RE.fullmatch(value.strip()) and not re.search(r"\d", value))
+
+
+def valid_contact(value):
+    return value == "" or bool(CONTACT_RE.fullmatch(value))
+
+
 def load_profile(username):
     with db_cursor(dictionary=True) as (_conn, cursor):
         cursor.execute(
@@ -226,6 +248,7 @@ def inject_globals():
     return {
         "current_user": current_user(),
         "current_subject": session.get("current_subject", "All Subjects"),
+        "current_section": session.get("current_section", "All Sections"),
         "now": datetime.now(),
     }
 
@@ -274,6 +297,7 @@ def login():
         session["section"] = user["section"] or "Not assigned"
         session["fullname"] = user["fullname"] or user["username"]
         session["current_subject"] = "All Subjects"
+        session["current_section"] = "All Sections"
         flash(f"Welcome back, {session['fullname']}.", "success")
         return redirect(url_for("home"))
     return render_template("auth.html", mode="login")
@@ -301,6 +325,15 @@ def terms():
 @login_required()
 def set_subject():
     session["current_subject"] = request.form.get("subject") or "All Subjects"
+    next_url = request.form.get("next") or url_for("home")
+    return redirect(next_url)
+
+
+@app.route("/set-section", methods=["POST"])
+@login_required()
+def set_section():
+    chosen = request.form.get("section") or "All Sections"
+    session["current_section"] = chosen if chosen in SECTIONS else "All Sections"
     next_url = request.form.get("next") or url_for("home")
     return redirect(next_url)
 
@@ -446,6 +479,8 @@ def admin_create_account():
         return redirect(url_for("admin_dashboard"))
     if not fullname:
         flash("Please enter the full name.", "error")
+    elif not valid_fullname(fullname):
+        flash("Full name may contain letters only. Spaces, periods, hyphens, and apostrophes are allowed.", "error")
     elif not EMAIL_RE.fullmatch(email):
         flash(
             "Please use a PHINMA Education email, for example juandelacruz@phinmaed.com.",
@@ -852,12 +887,15 @@ def teacher_modules():
         )
         modules = cursor.fetchall()
     modules, chosen = subject_filter(modules, "subject")
+    modules, chosen_section = section_filter(modules, "section")
     return render_template(
         "teacher.html",
         page="modules",
         **teacher_nav(),
         modules=modules,
         chosen_subject=chosen,
+        chosen_section=chosen_section,
+        sections=("All Sections", "Section A", "Section B", "Section C"),
     )
 
 
@@ -936,6 +974,7 @@ def teacher_activities():
         )
         activities = cursor.fetchall()
     activities, chosen = subject_filter(activities, "subject")
+    activities, chosen_section = section_filter(activities, "section")
     upcoming, overdue = [], []
     now = datetime.now()
     for activity in activities:
@@ -951,6 +990,8 @@ def teacher_activities():
         upcoming=upcoming,
         overdue=overdue,
         chosen_subject=chosen,
+        chosen_section=chosen_section,
+        sections=("All Sections", "Section A", "Section B", "Section C"),
     )
 
 
@@ -1141,6 +1182,12 @@ def handle_profile(template):
         contact = request.form.get("contact", "").strip()
         if not fullname:
             flash("Please enter your full name.", "warning")
+            return redirect(request.path)
+        if not valid_fullname(fullname):
+            flash("Full name may contain letters only. Spaces, periods, hyphens, and apostrophes are allowed.", "warning")
+            return redirect(request.path)
+        if not valid_contact(contact):
+            flash("Contact number may contain numbers only.", "warning")
             return redirect(request.path)
         profile = load_profile(user["username"])
         photo_path = profile["photo_path"] if profile else None

@@ -13,6 +13,7 @@
       <div class="signed">Signed in as<br>{{ current_user.fullname }}</div>
       {% block nav %}{% endblock %}
       <a class="btn btn-gold btn-sm" href="{{ url_for('logout') }}"><span>Log Out</span></a>
+      <p class="credit credit-sidebar">This sample project is coded by: Allen A. Cardel</p>
     </aside>
     <main class="main">
       {% include "_flashes.html" %}

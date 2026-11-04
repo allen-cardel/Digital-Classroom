@@ -140,8 +140,11 @@
 
   {% elif page == 'modules' %}
     <h1 class="page-title">Modules</h1>
-    <p class="lede">Posted modules. Use the dashboard card to upload a new one.</p>
+    <p class="lede">Choose a subject, then a section, to view only that class. Use the dashboard card to upload a new module.</p>
+    <p class="muted" style="margin:0 0 6px">Subject</p>
     {% include "_subject_picker.html" %}
+    <p class="muted" style="margin:14px 0 6px">Section</p>
+    {% include "_section_picker.html" %}
     {% for module in modules %}
       <article class="item-card">
         <p class="muted">Subject: {{ module.subject or "General / Not assigned" }}</p>
@@ -160,7 +163,7 @@
         {% if module.uploaded_at %}<p class="muted">Posted: {{ module.uploaded_at }}</p>{% endif %}
       </article>
     {% else %}
-      <p class="muted">No modules posted yet.</p>
+      <p class="muted">No modules posted for this subject and section.</p>
     {% endfor %}
 
   {% elif page == 'edit_module' %}
@@ -187,8 +190,11 @@
 
   {% elif page == 'activities' %}
     <h1 class="page-title">Activities</h1>
-    <p class="lede">Posted activities. Use the dashboard card to assign a new one.</p>
+    <p class="lede">Choose a subject, then a section, to view only that class. Use the dashboard card to assign a new activity.</p>
+    <p class="muted" style="margin:0 0 6px">Subject</p>
     {% include "_subject_picker.html" %}
+    <p class="muted" style="margin:14px 0 6px">Section</p>
+    {% include "_section_picker.html" %}
     <div class="split" style="margin-top:16px">
       <div class="panel">
         <h3>Posted activities</h3>

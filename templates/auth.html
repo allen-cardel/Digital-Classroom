@@ -3,9 +3,13 @@
 {% block body %}
 <div class="auth-shell">
   <aside class="auth-hero">
-    <div class="auth-kicker">Student Classroom</div>
-    <h1>Interactive Digital Resources Portal</h1>
+    <div class="auth-hero-content">
+      <div class="auth-kicker">Hi! This is</div>
+      <h1>Interactive Digital Classroom</h1>
+      <p class="auth-description">A web-based digital classroom prototype that connects students and teachers through accessible learning resources, organized activities, and an AI Reviewer Generator. Designed to support flexible learning, it offers universities the opportunity to adopt and transform it into an exclusive digital classroom tailored to their institution.</p>
+    </div>
     <div class="gold-rule"></div>
+    <p class="credit credit-hero">This Sample Project is coded by: Allen A. Cardel</p>
   </aside>
   <section class="auth-panel">
     <div class="card auth-card">
@@ -14,7 +18,7 @@
       <p class="sub">Sign in to continue to your account.</p>
       <form method="post" action="{{ url_for('login') }}">
         <div class="field">
-          <label>Username <span class="muted">name@phinmaed.com</span></label>
+          <label class="username-label">Username <span class="muted">(name@phinmaed.com)</span></label>
           <input name="username" required>
         </div>
         <div class="field">
@@ -26,7 +30,7 @@
         </div>
         <button class="btn btn-gold btn-xl" type="submit"><span>Sign In</span></button>
       </form>
-      <p><a href="{{ url_for('terms') }}">Terms & Conditions | Privacy</a></p>
+      <p><a href="{{ url_for('terms') }}">Terms of Use and Privacy Notice</a></p>
     </div>
   </section>
 </div>

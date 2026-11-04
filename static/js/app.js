@@ -15,6 +15,40 @@ function togglePassword(id, button) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("input[name='fullname']").forEach((field) => {
+    field.addEventListener("input", () => {
+      field.value = field.value.replace(/[^A-Za-z .'-]/g, "");
+    });
+  });
+  document.querySelectorAll("input[name='contact']").forEach((field) => {
+    field.addEventListener("input", () => {
+      field.value = field.value.replace(/\D/g, "");
+    });
+  });
+
+  document.querySelectorAll("[data-filter-select]").forEach((input) => {
+    const select = document.getElementById(input.dataset.filterSelect);
+    if (!select) return;
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLowerCase();
+      Array.from(select.options).forEach((option) => {
+        option.hidden = Boolean(query) && !option.textContent.toLowerCase().includes(query);
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-filter-table]").forEach((input) => {
+    const table = document.getElementById(input.dataset.filterTable);
+    if (!table) return;
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLowerCase();
+      Array.from(table.querySelectorAll("tr")).forEach((row, index) => {
+        if (index === 0) return;
+        row.style.display = !query || row.textContent.toLowerCase().includes(query) ? "" : "none";
+      });
+    });
+  });
+
   const quiz = document.getElementById("quiz-app");
   if (!quiz) return;
 

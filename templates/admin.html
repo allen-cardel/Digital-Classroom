@@ -30,7 +30,8 @@
         </div>
         <div class="field">
           <label>Assigned teacher</label>
-          <select name="teacher_id" required>
+          <input type="search" class="filter-input" data-filter-select="teacher-box" placeholder="Search teacher...">
+          <select name="teacher_id" id="teacher-box" required>
             {% for teacher in teachers %}
               <option value="{{ teacher.id }}">{{ teacher.id }} - {{ teacher.name }}</option>
             {% endfor %}
@@ -72,6 +73,7 @@
         <div class="grid-2">
           <div class="field">
             <label>Student</label>
+            <input type="search" class="filter-input" data-filter-select="student-box" placeholder="Search student...">
             <select name="student_id" id="student-box">
               {% for student in students %}
                 <option value="{{ student.id }}" data-section="{{ student.section }}">{{ student.id }} - {{ student.name }} ({{ student.section }})</option>
@@ -115,7 +117,7 @@
           </div>
           <div class="field">
             <label>Full name</label>
-            <input name="fullname" required>
+            <input name="fullname" required pattern="[A-Za-z][A-Za-z .'-]*" title="Letters only. Spaces, periods, hyphens, and apostrophes are allowed.">
           </div>
           <div class="field">
             <label>Email address <span class="muted">used as username</span></label>
@@ -154,7 +156,10 @@
     </div>
     <div class="panel" style="margin-top:16px">
       <h3>Registered user accounts</h3>
-      <table>
+      <div class="field">
+        <input type="search" class="filter-input" data-filter-table="account-table" placeholder="Search by name, email, role, or section...">
+      </div>
+      <table id="account-table">
         <tr><th>ID</th><th>Full name</th><th>Username / Email</th><th>Role</th><th>Section</th><th>Status</th></tr>
         {% for account in accounts %}
           <tr>
@@ -171,6 +176,8 @@
               {% endif %}
             </td>
           </tr>
+        {% else %}
+          <tr><td colspan="6">No accounts yet.</td></tr>
         {% endfor %}
       </table>
     </div>
